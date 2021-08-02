@@ -24,6 +24,13 @@ struct PAYMASTER {
   60
 };
 
+struct PAYSLAVE {
+  /*
+  fan: the fan speed read off the pin no. 3 (yellow wire) of a PC fan.
+  */
+  uint8_t fan;
+} status;
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -32,8 +39,8 @@ void setup() {
   delay(999);
 }
 
-void debug() {
-  Serial.print("MASTER: ");
+void debugTx() {
+  Serial.print("MASTER TX: ");
   Serial.print(millis());
   Serial.print("   Water: ");
   Serial.print(instructions.water);
@@ -43,14 +50,33 @@ void debug() {
   Serial.println(instructions.led);
 }
 
+void debugRx() {
+  Serial.print("MASTER RX: ");
+  Serial.print(millis());
+  Serial.print(", Fan: ");
+  Serial.println(status.fan);
+}
+
 void loop() {
   // put your main code here, to run repeatedly:
   toc = millis();
   if ((toc - tic) > DELTA) {
     masterMCU.txObj(instructions, sizeof(instructions));
     masterMCU.sendDatum(instructions), sizeof(instructions);
-    debug();
+    debugTx();
     tic = toc;
   }
+  if (masterMCU.available()) {
+    masterMCU.rxObj(status);
+    debugRx();
+  } else if (masterMCU.status < 0) {
+    Serial.print("ERROR: ");
 
+    if(masterMCU.status == -1)
+      Serial.println(F("CRC_ERROR"));
+    else if(masterMCU.status == -2)
+      Serial.println(F("PAYLOAD_ERROR"));
+    else if(masterMCU.status == -3)
+      Serial.println(F("STOP_BYTE_ERROR"));
+  }
 }
